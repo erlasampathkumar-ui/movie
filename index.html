@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="CineRed - Premium Black & Red Movie Ticket Booking Application featuring Devara: Part 1 and Aravinda Sametha with interactive seat selection.">
+  <meta name="theme-color" content="#08080a">
+  <title>CineRed | Book Movie Tickets - Devara & Aravinda Sametha</title>
+  
+  <!-- Favicon / App Icon -->
+  <link rel="icon" type="image/svg+xml" href="assets/icons/logo.svg">
+
+  <!-- Google Fonts: Outfit & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <div class="container nav-container">
+      <!-- App Brand Logo -->
+      <a href="index.html" class="brand-logo" title="CineRed Home">
+        <div class="brand-icon-wrapper">
+          <img src="assets/icons/logo.svg" alt="CineRed Logo">
+        </div>
+        <div>
+          <div class="brand-text">CINE<span>RED</span></div>
+          <span class="brand-sub">PREMIUM CINEMAS</span>
+        </div>
+      </a>
+
+      <!-- Search Input -->
+      <div class="nav-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="navSearchInput" placeholder="Search Devara, Aravinda Sametha, cast, directors...">
+      </div>
+
+      <!-- Nav Actions -->
+      <div class="nav-actions">
+        <!-- City Selector -->
+        <div class="city-selector" title="Select Cinema City">
+          <i class="fa-solid fa-location-dot pin"></i>
+          <span>Hyderabad</span>
+          <i class="fa-solid fa-chevron-down" style="font-size: 0.72rem; color: var(--text-dim);"></i>
+        </div>
+
+        <!-- REQUIREMENT 6: User Profile Nav Pill -->
+        <button class="btn-profile-toggle" onclick="openUserProfileModal('bookings')" title="Open My Profile and Previous Bookings">
+          <div class="profile-avatar-pill" id="navUserAvatar">A</div>
+          <span class="profile-label-pill" id="navUserName">Arjun</span>
+          <i class="fa-solid fa-chevron-down" style="font-size: 0.7rem; color: var(--text-dim); margin-left: 2px;"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="container">
+    
+    <!-- Hero Slider / Feature Banner -->
+    <section class="hero-section">
+      <div class="hero-slider-wrap" id="heroSliderWrap">
+        <!-- Injected dynamically via app.js -->
+      </div>
+    </section>
+
+    <!-- SECTION: NOW STREAMING & IN CINEMAS -->
+    <section class="now-showing-section">
+      <div class="section-title-wrap">
+        <div>
+          <h2 class="section-title">Now Streaming & In Cinemas</h2>
+          <p class="section-subtitle">Real-time seat filling speed, instant booking, and VIP cinema formats</p>
+        </div>
+        <div style="font-size: 0.85rem; color: var(--red-bright); font-weight: 700; display: flex; align-items: center; gap: 6px;">
+          <i class="fa-solid fa-bolt"></i> High Demand Blockbusters
+        </div>
+      </div>
+
+      <!-- REQUIREMENT 2, 4, 5: Movies Container with Fast Filling Indicators -->
+      <div class="movies-grid" id="moviesContainer">
+        <!-- Injected dynamically with Devara & Aravinda Sametha via app.js -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================================================
+       BOOKING WORKFLOW MODAL (Step 1: Shows -> Step 2: Seats -> Step 3: Pay -> Step 4: Ticket)
+       Strictly enforces: Seat selection is BEFORE payment option!
+       ======================================================================== -->
+  <div class="modal-overlay" id="bookingModal">
+    <div class="modal-window">
+      <!-- Modal Sticky Header -->
+      <div class="modal-header">
+        <div class="modal-header-info">
+          <img src="assets/images/devara.jpg" id="modalHeaderThumb" class="modal-header-thumb" alt="Movie Thumbnail">
+          <div>
+            <h3 class="modal-title" id="modalMovieTitle">Devara: Part 1</h3>
+            <div class="modal-subtitle" id="modalMovieSub">Telugu • Action/Drama • U/A 16+</div>
+          </div>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal('bookingModal')" title="Close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body (Dynamic step view) -->
+      <div class="modal-body" id="bookingModalContent">
+        <!-- Rendered dynamically: Showtimes, Seat Selection, Payment, or Confirmed Ticket -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       REQUIREMENT 6: USER PROFILE & PREVIOUS MOVIE BOOKINGS MODAL
+       Contains user details, membership tier, and historical tickets
+       ======================================================================== -->
+  <div class="modal-overlay" id="profileModal">
+    <div class="modal-window profile-modal-window">
+      <div class="modal-header">
+        <div class="modal-header-info">
+          <div class="brand-icon-wrapper" style="width: 36px; height: 36px;">
+            <i class="fa-solid fa-id-card-clip" style="color: var(--red-bright); font-size: 1.1rem;"></i>
+          </div>
+          <div>
+            <h3 class="modal-title">CineRed Cinephile Profile</h3>
+            <div class="modal-subtitle">Your Membership & Previous Movie Bookings History</div>
+          </div>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal('profileModal')" title="Close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="modal-body" id="userProfileModalBody">
+        <!-- Rendered dynamically via app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       OFFICIAL TRAILER MODAL
+       ======================================================================== -->
+  <div class="modal-overlay" id="trailerModal">
+    <div class="modal-window trailer-modal-window">
+      <div class="modal-header" style="background: #000; border-bottom: 1px solid #1f1f2a;">
+        <span style="font-weight: 700; color: #fff;"><i class="fa-solid fa-play" style="color: var(--red-bright); margin-right: 8px;"></i> Official HD Trailer</span>
+        <button class="btn-close-modal" onclick="closeTrailerModal()" title="Close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="modal-body" style="padding: 0;" id="trailerModalContent">
+        <!-- YouTube Embed Injected -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <div class="brand-text">CINE<span>RED</span></div>
+          <p>Next-generation cinematic ticket booking app engineered with deep black & crimson aesthetic, live seat velocity indicators, and instant digital ticketing.</p>
+        </div>
+        <div class="footer-links">
+          <div class="footer-col">
+            <h5>Featured Movies</h5>
+            <ul>
+              <li><a href="javascript:void(0)" onclick="startBookingFlow('devara')" style="color: var(--text-muted); text-decoration: none;">Devara: Part 1</a></li>
+              <li><a href="javascript:void(0)" onclick="startBookingFlow('aravinda-sametha')" style="color: var(--text-muted); text-decoration: none;">Aravinda Sametha</a></li>
+              <li><a href="javascript:void(0)" onclick="openUserProfileModal('bookings')" style="color: var(--text-muted); text-decoration: none;">Previous Bookings</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h5>Cinema Formats</h5>
+            <ul>
+              <li>IMAX 2D with Laser</li>
+              <li>4DX Dynamic Experience</li>
+              <li>Dolby Atmos 7.1</li>
+              <li>VIP Platinum Recliners</li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h5>Security & Cloud</h5>
+            <ul>
+              <li>AWS S3 & CloudFront Ready</li>
+              <li>Docker & Nginx Configured</li>
+              <li>SSL End-to-End Encryption</li>
+              <li>Instant M-Ticket Delivery</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <div>&copy; 2026 CineRed Technologies. All rights reserved.</div>
+        <div style="display: flex; gap: 16px;">
+          <span>Black & Red Theme</span> &bull; 
+          <span>Jr. NTR Blockbuster Showcase</span> &bull; 
+          <span>AWS Production Ready</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
