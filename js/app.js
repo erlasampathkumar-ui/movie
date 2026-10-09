@@ -27,8 +27,8 @@ const AppState = {
   bookingsHistory: []
 };
 
-// Initialize State from LocalStorage or Defaults
-function initAppState() {
+// Initialize State from LocalStorage or Backend API (AWS RDS via EC2)
+async function initAppState() {
   const savedUser = localStorage.getItem('cinered_user');
   if (savedUser) {
     AppState.user = JSON.parse(savedUser);
@@ -44,24 +44,78 @@ function initAppState() {
     AppState.bookingsHistory = [...INITIAL_BOOKINGS];
     localStorage.setItem('cinered_bookings', JSON.stringify(AppState.bookingsHistory));
   }
+
+  // Attempt sync with AWS EC2 + RDS Backend if configured
+  const apiUrl = window.CONFIG && window.CONFIG.API_URL ? window.CONFIG.API_URL.replace(/\/$/, '') : null;
+  if (apiUrl) {
+    try {
+      const [profRes, bookRes] = await Promise.all([
+        fetch(`${apiUrl}/api/profile`, { signal: AbortSignal.timeout(3000) }),
+        fetch(`${apiUrl}/api/bookings`, { signal: AbortSignal.timeout(3000) })
+      ]);
+      if (profRes.ok) {
+        const remoteUser = await profRes.json();
+        if (remoteUser && remoteUser.name) {
+          AppState.user = { ...AppState.user, ...remoteUser };
+          localStorage.setItem('cinered_user', JSON.stringify(AppState.user));
+        }
+      }
+      if (bookRes.ok) {
+        const remoteBookings = await bookRes.json();
+        if (Array.isArray(remoteBookings) && remoteBookings.length > 0) {
+          AppState.bookingsHistory = remoteBookings;
+          localStorage.setItem('cinered_bookings', JSON.stringify(AppState.bookingsHistory));
+        }
+      }
+      renderUserProfile();
+    } catch (err) {
+      console.warn("Backend API not reachable, running in resilient local mode:", err);
+    }
+  }
 }
 
-// Save User Profile to LocalStorage
-function saveUserProfile(updatedData) {
+// Save User Profile to LocalStorage and AWS RDS
+async function saveUserProfile(updatedData) {
   AppState.user = { ...AppState.user, ...updatedData };
   localStorage.setItem('cinered_user', JSON.stringify(AppState.user));
   renderUserProfile();
+
+  const apiUrl = window.CONFIG && window.CONFIG.API_URL ? window.CONFIG.API_URL.replace(/\/$/, '') : null;
+  if (apiUrl) {
+    try {
+      await fetch(`${apiUrl}/api/profile`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData)
+      });
+    } catch (e) {
+      console.warn("Failed to sync profile with RDS:", e);
+    }
+  }
   showToast("Profile details updated successfully!", "fa-check-circle");
 }
 
-// Save New Booking to LocalStorage
-function saveNewBooking(bookingRecord) {
+// Save New Booking to LocalStorage and AWS RDS
+async function saveNewBooking(bookingRecord) {
   AppState.bookingsHistory.unshift(bookingRecord);
-  // Award 100 loyalty points per booking
   AppState.user.points = (AppState.user.points || 1000) + 120;
   localStorage.setItem('cinered_user', JSON.stringify(AppState.user));
   localStorage.setItem('cinered_bookings', JSON.stringify(AppState.bookingsHistory));
   renderUserProfile();
+
+  const apiUrl = window.CONFIG && window.CONFIG.API_URL ? window.CONFIG.API_URL.replace(/\/$/, '') : null;
+  if (apiUrl) {
+    try {
+      await fetch(`${apiUrl}/api/bookings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bookingRecord)
+      });
+      showToast("Booking synced with AWS RDS Database!", "fa-database");
+    } catch (e) {
+      console.warn("Failed to sync booking with RDS:", e);
+    }
+  }
 }
 
 // Document Ready Bootstrap

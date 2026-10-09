@@ -1,0 +1,231 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CineRed 3-Tier AWS Architecture: Custom VPC, Public/Private Subnets, Security Groups, and RDS PostgreSQL Database'
+
+Parameters:
+  DBUsername:
+    Type: String
+    Default: postgres
+    Description: Master username for the RDS PostgreSQL database.
+  DBPassword:
+    Type: String
+    NoEcho: true
+    Default: CineRedPass2026!
+    Description: Master password for RDS (Min 8 chars).
+  DBName:
+    Type: String
+    Default: cinered
+    Description: Initial database name.
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro
+    Description: RDS instance type (db.t3.micro is Free-Tier eligible).
+
+Resources:
+  # ============================================================================
+  # 1. VIRTUAL PRIVATE CLOUD (VPC)
+  # ============================================================================
+  CineRedVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: CineRed-VPC
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: CineRed-IGW
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref CineRedVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # ============================================================================
+  # 2. SUBNETS (Across 2 Availability Zones for RDS High Availability)
+  # ============================================================================
+  # Public Subnet 1 (AZ A - For EC2 & Web Traffic)
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref CineRedVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: CineRed-Public-Subnet-1
+
+  # Public Subnet 2 (AZ B)
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref CineRedVPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: CineRed-Public-Subnet-2
+
+  # Private Subnet 1 (AZ A - For Secure RDS)
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref CineRedVPC
+      CidrBlock: 10.0.11.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: CineRed-Private-Subnet-1
+
+  # Private Subnet 2 (AZ B - For Secure RDS)
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref CineRedVPC
+      CidrBlock: 10.0.12.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: CineRed-Private-Subnet-2
+
+  # ============================================================================
+  # 3. ROUTE TABLES
+  # ============================================================================
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref CineRedVPC
+      Tags:
+        - Key: Name
+          Value: CineRed-Public-RouteTable
+
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  Subnet1RouteTableAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  Subnet2RouteTableAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  # ============================================================================
+  # 4. SECURITY GROUPS
+  # ============================================================================
+  # EC2 Backend Security Group
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Allow HTTP, API (8000), and SSH access to EC2'
+      VpcId: !Ref CineRedVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: CineRed-EC2-SG
+
+  # RDS Database Security Group (ONLY allows traffic originating from EC2 SG)
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Allow PostgreSQL access strictly from EC2 Backend'
+      VpcId: !Ref CineRedVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref EC2SecurityGroup
+      Tags:
+        - Key: Name
+          Value: CineRed-RDS-SG
+
+  # ============================================================================
+  # 5. RDS DATABASE IN PRIVATE SUBNETS
+  # ============================================================================
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: 'Subnets for CineRed RDS Database'
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: CineRed-DB-Subnet-Group
+
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: cinered-postgres-db
+      AllocatedStorage: '20'
+      DBInstanceClass: !Ref DBInstanceClass
+      Engine: postgres
+      EngineVersion: '15'
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBName: !Ref DBName
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      PubliclyAccessible: false
+      MultiAZ: false
+      StorageType: gp2
+      BackupRetentionPeriod: 1
+      DeleteAutomatedBackups: true
+      Tags:
+        - Key: Name
+          Value: CineRed-Postgres-Instance
+
+Outputs:
+  VpcId:
+    Description: CineRed VPC ID
+    Value: !Ref CineRedVPC
+  PublicSubnet1Id:
+    Description: Public Subnet 1 (Launch EC2 here)
+    Value: !Ref PublicSubnet1
+  PublicSubnet2Id:
+    Description: Public Subnet 2
+    Value: !Ref PublicSubnet2
+  EC2SecurityGroupId:
+    Description: Security Group for EC2
+    Value: !Ref EC2SecurityGroup
+  RDSEndpoint:
+    Description: RDS Database Endpoint Hostname
+    Value: !GetAtt RDSInstance.Endpoint.Address
+  RDSPort:
+    Description: RDS Database Port
+    Value: !GetAtt RDSInstance.Endpoint.Port
+  DBName:
+    Description: Database Name
+    Value: !Ref DBName
